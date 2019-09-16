@@ -15,55 +15,54 @@ type countedMedian struct {
 	num int
 }
 
-func (pr *PingResult) Analyze() *AnalyzedResult {
-	var ar = &AnalyzedResult{
+func (pr *PingResult) Analyze() AnalyzedResult {
+	var ar = AnalyzedResult{
 		Result: pr,
 	}
 
-	//res, _ := json.Marshal(pr)
-	// fmt.Println(pr.medians())
-	medianNBytes, _ := pr.medians()
-	var cmNBytes []countedMedian
+	rttMedina := pr.medianRtt()
+	var biggerThanMedianCounter = 0
 	for _, packet := range pr.Packets {
-		//fmt.Println(packet.Nbytes)
-		//asd := int((float64(packet.Nbytes)/float64(medianNBytes)) * 100)
-		if medianNBytes < packet.Nbytes {
-			cmNBytes = append(cmNBytes, countedMedian{
-				typ: increase,
-				num: int((float64(packet.Nbytes)/float64(medianNBytes)) * 100),
-			})
-			//asd := int((float64(packet.Nbytes)/float64(medianNBytes)) * 100)
-			//fmt.Printf("Increase - NBytes: %d, Median: %d, num: %d\n", packet.Nbytes, medianNBytes, asd)
-		} else if medianNBytes > packet.Nbytes {
-			cmNBytes = append(cmNBytes, countedMedian{
-				typ: decrease,
-				num: int((float64(medianNBytes)/float64(packet.Nbytes)) * 100),
-			})
-			//asd := int((float64(medianNBytes)/float64(packet.Nbytes)) * 100)
-			//fmt.Printf("Decrease - NBytes: %d, Median: %d, num: %d\n", packet.Nbytes, medianNBytes, asd)
+		if float64(packet.Rtt) > rttMedina {
+			biggerThanMedianCounter++
 		}
-
 	}
-	// fmt.Println(string(res))
+	var calculated = float64(biggerThanMedianCounter)/float64(len(pr.Packets))
+	var calculatedInt = int(calculated*100)
+	var	final int
+	if calculatedInt > 50 {
+		part := 50 - (100 - calculatedInt)
+		final = 100 - part*2
+	} else {
+		part := 50 - calculatedInt
+		final = 100 - part*2
+	}
+
+	ar.Score = final
 
 	return ar
 }
 
-type AnalyzedResults map[string][]AnalyzedResult
-
-func (ar *AnalyzedResults) Analyze() {
-
-}
-
-func (pr *PingResult) medians() (int, int) {
-	var sumNBytes = 0
+func (pr *PingResult) medianRtt() float64 {
 	var sumRtt = 0
 	for _, packet := range pr.Packets {
-		sumNBytes += packet.Nbytes
 		sumRtt += int(packet.Rtt)
 	}
 
-	medianNBytes := sumNBytes / len(pr.Packets)
-	medianRtt := sumRtt / len(pr.Packets)
-	return medianNBytes, medianRtt
+	return float64(sumRtt) / float64(len(pr.Packets))
 }
+
+type AnalyzedResults map[string][]AnalyzedResult
+
+func (ar AnalyzedResults) Analyze() float64 {
+	var sum int
+	var length = 0
+	for _, arAction := range ar {
+		length += len(arAction)
+		for _, singleAction := range arAction {
+			sum += singleAction.Score
+		}
+	}
+	return float64(sum) / float64(length)
+}
+

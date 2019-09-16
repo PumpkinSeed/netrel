@@ -1,15 +1,19 @@
 package netreler
 
 import (
+	"encoding/json"
 	"fmt"
-	"github.com/sparrc/go-ping"
+	"log"
 	"math/rand"
 	"os"
 	"time"
+
+	"github.com/sparrc/go-ping"
 )
 
 const (
-	defaultIterationPerTest = 10
+	defaultIterationPerSinglePingTest = 200
+	defaultIterationPerTest           = 5
 )
 
 var (
@@ -26,12 +30,56 @@ type PingResult struct {
 	Packets []ping.Packet
 }
 
-func SinglePing(host string, c chan os.Signal) (*PingResult, error) {
+type TestResult struct {
+	TestedHosts []string
+	Score       float64
+	Meta        AnalyzedResults
+	Spent       time.Duration
+}
+
+func (t *TestResult) JSON() ([]byte, error) {
+	return json.Marshal(t)
+}
+
+func Test(c chan os.Signal) *TestResult {
+	mes := time.Now()
+
+	go func() {
+		var progress = "La"
+		for {
+			fmt.Printf("%s\r", progress)
+			time.Sleep(500 * time.Millisecond)
+			progress += "la"
+		}
+	} ()
+
+	var ar = make(AnalyzedResults)
+	for _, host := range trustedHosts {
+		ar[host] = []AnalyzedResult{}
+		for i := 0; i < defaultIterationPerTest; i++ {
+			pr, err := SinglePingTest(host, c)
+			if err != nil {
+				log.Print(err)
+				continue
+			}
+			ar[host] = append(ar[host], pr.Analyze())
+		}
+	}
+
+	return &TestResult{
+		TestedHosts: trustedHosts,
+		Score: ar.Analyze(),
+		Meta: ar,
+		Spent: time.Since(mes),
+	}
+}
+
+func SinglePingTest(host string, c chan os.Signal) (*PingResult, error) {
 	pinger, err := ping.NewPinger(host)
 	if err != nil {
 		return nil, err
 	}
-	pinger.Interval = time.Millisecond * 100
+	pinger.Interval = time.Millisecond * 10
 	pinger.SetPrivileged(true)
 
 	go func() {
@@ -46,21 +94,20 @@ func SinglePing(host string, c chan os.Signal) (*PingResult, error) {
 	pinger.OnRecv = func(pkt *ping.Packet) {
 		rand.Seed(time.Now().UnixNano())
 		min := 24
-		max := 110
-		pinger.Size = rand.Intn(max - min + 1) + min
-		if counter > defaultIterationPerTest {
+		max := 50
+		pinger.Size = rand.Intn(max-min+1) + min
+		if counter > defaultIterationPerSinglePingTest {
 			pinger.Stop()
 			return
 		} else {
 			counter++
 		}
 		if pkt != nil {
-			fmt.Println("test")
+			//fmt.Println("test")
 			pr.Packets = append(pr.Packets, *pkt)
 		}
 	}
 	pinger.OnFinish = func(stats *ping.Statistics) {
-		fmt.Println("testfinish")
 		pr.Stats = stats
 	}
 	pinger.Run()
