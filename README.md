@@ -11,7 +11,7 @@ go install github.com/PumpkinSeed/netrel
 sudo netrel
 ```
 
-##### Flags
+##### Flags
 
 `--print-meta`: Print the complete analyzed data.
 
