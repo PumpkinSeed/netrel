@@ -12,6 +12,14 @@ import (
 )
 
 const (
+	conditionGood           = "good"
+	conditionGoodPercentage = 72
+	conditionSoSo           = "so-so"
+	conditionSoSoPercentage = 49
+	conditionPoor           = "poor"
+)
+
+const (
 	defaultIterationPerSinglePingTest = 200
 	defaultIterationPerTest           = 5
 )
@@ -35,6 +43,7 @@ type TestResult struct {
 	Score       float64
 	Meta        AnalyzedResults
 	Spent       time.Duration
+	Condition   string
 }
 
 func (t *TestResult) JSON() ([]byte, error) {
@@ -55,7 +64,7 @@ func Test(c chan os.Signal) *TestResult {
 			time.Sleep(500 * time.Millisecond)
 			progress += "="
 		}
-	} ()
+	}()
 
 	var ar = make(AnalyzedResults)
 	for _, host := range trustedHosts {
@@ -70,11 +79,20 @@ func Test(c chan os.Signal) *TestResult {
 		}
 	}
 
+	score := ar.Analyze()
+	condition := conditionPoor
+	if score > conditionGoodPercentage {
+		condition = conditionGood
+	} else if score > conditionSoSoPercentage {
+		condition = conditionSoSo
+	}
+
 	return &TestResult{
 		TestedHosts: trustedHosts,
-		Score: ar.Analyze(),
-		Meta: ar,
-		Spent: time.Since(mes),
+		Score:       score,
+		Meta:        ar,
+		Spent:       time.Since(mes),
+		Condition:   condition,
 	}
 }
 

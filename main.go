@@ -40,4 +40,5 @@ func main() {
 	}
 	fmt.Printf("Final score of internet reliability: %f%% \n", result.Score)
 	fmt.Printf("Test spent: %s\n", result.Spent)
+	fmt.Printf("Condition: %s\n", result.Condition)
 }

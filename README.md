@@ -1,6 +1,8 @@
 # netrel
 Internet reliability check - CLI tool
 
+netrel analyze the reliability of the internet connection. It's sending ICMP packets to the trusted hosts many time, and based on the analyzed result determine a percentage how good the connection is.
+
 ### Usage
 
 ```
@@ -8,6 +10,10 @@ go install github.com/PumpkinSeed/netrel
 
 sudo netrel
 ```
+
+##### Flags
+
+`--print-meta`: Print the complete analyzed data.
 
 ##### Sample output
 
