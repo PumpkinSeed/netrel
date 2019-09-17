@@ -41,15 +41,19 @@ func (t *TestResult) JSON() ([]byte, error) {
 	return json.Marshal(t)
 }
 
+func (t *TestResult) PrettyPrintMeta() ([]byte, error) {
+	return json.MarshalIndent(t.Meta, "", "\t")
+}
+
 func Test(c chan os.Signal) *TestResult {
 	mes := time.Now()
 
 	go func() {
-		var progress = "La"
+		var progress = "="
 		for {
 			fmt.Printf("%s\r", progress)
 			time.Sleep(500 * time.Millisecond)
-			progress += "la"
+			progress += "="
 		}
 	} ()
 

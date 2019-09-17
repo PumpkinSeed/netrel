@@ -7,7 +7,8 @@ const (
 
 type AnalyzedResult struct {
 	Result *PingResult
-	Score int
+	ScoreRtt int
+	ScorePackets float64
 }
 
 type countedMedian struct {
@@ -20,6 +21,13 @@ func (pr *PingResult) Analyze() AnalyzedResult {
 		Result: pr,
 	}
 
+	ar.ScoreRtt = pr.analyzeRtt()
+	ar.ScorePackets = pr.Stats.PacketLoss
+
+	return ar
+}
+
+func (pr *PingResult) analyzeRtt() int {
 	rttMedina := pr.medianRtt()
 	var biggerThanMedianCounter = 0
 	for _, packet := range pr.Packets {
@@ -38,9 +46,7 @@ func (pr *PingResult) Analyze() AnalyzedResult {
 		final = 100 - part*2
 	}
 
-	ar.Score = final
-
-	return ar
+	return final
 }
 
 func (pr *PingResult) medianRtt() float64 {
@@ -55,14 +61,18 @@ func (pr *PingResult) medianRtt() float64 {
 type AnalyzedResults map[string][]AnalyzedResult
 
 func (ar AnalyzedResults) Analyze() float64 {
-	var sum int
+	var sumRtt = 0
+	var sumPackets float64 = 0
 	var length = 0
 	for _, arAction := range ar {
 		length += len(arAction)
 		for _, singleAction := range arAction {
-			sum += singleAction.Score
+			sumRtt += singleAction.ScoreRtt
+			sumPackets += 100 - singleAction.ScorePackets
 		}
 	}
-	return float64(sum) / float64(length)
+	rttPart := float64(sumRtt) / float64(length)
+	packetPart := sumPackets / float64(length)
+	return (rttPart + packetPart) / 2
 }
 
